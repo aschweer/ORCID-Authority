@@ -28,31 +28,7 @@ import java.util.List;
  */
 public class OrcidPersonLookup implements ChoiceAuthority {
 
-    private String url;
     private static Logger log = Logger.getLogger(OrcidPersonLookup.class);
-	private String reverseUrl;
-
-	private void init() {
-        if (url == null) {
-	        String baseUrl = ConfigurationManager.getProperty("lconzauthor.base_url");
-	        if (baseUrl == null || "".equals(baseUrl)) {
-		        log.warn("lconz author lookup: no base url specified, using default");
-		        url = "http://localhost:8080/author-lookup/author/lookup.xml";
-	        } else {
-		        url = baseUrl;
-	        }
-		    log.info("lconz author lookup: using base url " + url);
-        }
-	    if (reverseUrl == null) {
-		    String reverseUrlProp = ConfigurationManager.getProperty("lconzauthor.reverse_url");
-		    if (reverseUrlProp == null || "".equals(reverseUrlProp)) {
-			    log.warn("lconz author lookup: no reverse lookup url specified, won't attempt reverse lookups");
-		    } else {
-			    reverseUrl = reverseUrlProp;
-			    log.info("lconz author lookup: using reverse lookup url " + reverseUrl);
-		    }
-	    }
-    }
 
     /**
      * Get all values from the authority that match the profferred value.
@@ -77,7 +53,6 @@ public class OrcidPersonLookup implements ChoiceAuthority {
      * @return a Choices object (never null).
      */
     public Choices getMatches(String field, String text, int collection, int start, int limit, String locale) {
-	    init();
         DCPersonName name = new DCPersonName(text);
         if (name.getFirstNames() == null && name.getLastName() == null) {
             return new Choices(true);
@@ -85,7 +60,7 @@ public class OrcidPersonLookup implements ChoiceAuthority {
         
         Choice[] values;
         try {
-            values = doQuery(url, name.getFirstNames(), name.getLastName());
+            values = doQuery("http://pub.orcid.org/search/orcid-bio/", name.getFirstNames(), name.getLastName());
         } catch (LookupException e) {
             log.error("Cannot look up matches for field=" + field + ", text=" + text, e);
             return new Choices(true);
@@ -127,9 +102,14 @@ public class OrcidPersonLookup implements ChoiceAuthority {
     Choice[] doQuery(String baseUrl, String firstName, String lastName) throws LookupException {
         List<Choice> results;
 
-	    NameValuePair[] args = new NameValuePair[2];
-	    args[0] = new NameValuePair("firstname", firstName);
-	    args[1] = new NameValuePair("lastname", lastName);
+	    NameValuePair[] args = new NameValuePair[1];
+
+	    StringBuilder query = new StringBuilder();
+	    query.append("family-name:");
+	    query.append(lastName);
+	    query.append(" AND given-names:");
+	    query.append(firstName);
+	    args[0] = new NameValuePair("q", query.toString());
 	    String paramsString = EncodingUtil.formUrlEncode(args, "UTF8");
 
 	    Document doc = makeRequest(baseUrl, paramsString);
@@ -313,8 +293,7 @@ public class OrcidPersonLookup implements ChoiceAuthority {
      * @return descriptive label - should always return something, never null.
      */
     public String getLabel(String field, String key, String locale) {
-	    init();
-	    if (reverseUrl == null || "".equals(reverseUrl)) {
+	/*if (reverseUrl == null || "".equals(reverseUrl)) {
 		    return key;
 	    }
 
@@ -325,8 +304,8 @@ public class OrcidPersonLookup implements ChoiceAuthority {
 		    }
 	    } catch (LookupException e) {
 		    log.error("Could not get label for key=" + key, e);
-	    }
+		    }*/
 	    return key; // fall back to key in case of error
-    }
+	    }
 
 }
