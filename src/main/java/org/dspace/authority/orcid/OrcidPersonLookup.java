@@ -202,44 +202,26 @@ public class OrcidPersonLookup implements ChoiceAuthority {
     }
 
     Choice createChoiceFromAuthor(Node author) {
-        String id = null;
         String name = null;
-        String role = null;
-        String phone = null;
+	NodeList bio = author.getOwnerDocument().getElementsByTagName("orcid-bio");
+	NodeList details = bio.item(0).getOwnerDocument().getElementsByTagName("personal-details");
+	String familyName = details.item(0).getOwnerDocument().getElementsByTagName("family-name").item(0).getTextContent();
+	String givenName = details.item(0).getOwnerDocument().getElementsByTagName("given-names").item(0).getTextContent();
 
-        NodeList children = author.getChildNodes();
-        for (int j = 0; j < children.getLength(); j++) {
-            Node child = children.item(j);
-            if (child.getNodeType() == Node.ELEMENT_NODE) {
-                if (child.getNodeName().equals("id")) {
-                    id = child.getTextContent();
-                } else if (child.getNodeName().equals("name")) {
-                    name = child.getTextContent();
-                } else if (child.getNodeName().equals("role")) {
-                    role = child.getTextContent();
-                } else if (child.getNodeName().equals("phone")) {
-                    phone = child.getTextContent();
-                }
-            }
-        }
+	name = familyName + ", " + givenName;
 
+	String id = author.getOwnerDocument().getElementsByTagName("orcid").item(0).getTextContent();
+	
         Choice choice = null;
         if (id != null && name != null) {
             choice = new Choice();
 
-            choice.authority = id;
+            choice.authority = "orcid:" + id;
             choice.value = name;
 
             StringBuilder labelBuilder = new StringBuilder(name);
-            if (role != null) {
-                labelBuilder.append(" (");
-                labelBuilder.append(role);
-                labelBuilder.append(")");
-            }
-            if (phone != null) {
-                labelBuilder.append(" phone: ");
-                labelBuilder.append(phone);
-            }
+	    labelBuilder.append("ORCID iD: ");
+	    labelBuilder.append(id);
             choice.label = labelBuilder.toString();
         }
         return choice;
