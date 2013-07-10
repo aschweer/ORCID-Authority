@@ -105,14 +105,13 @@ public class OrcidPersonLookup implements ChoiceAuthority {
 	    NameValuePair[] args = new NameValuePair[1];
 
 	    StringBuilder query = new StringBuilder();
+	    query.append("q=");
 	    query.append("family-name:");
 	    query.append(lastName);
-	    query.append(" AND given-names:");
+	    query.append("+AND+given-names:");
 	    query.append(firstName);
-	    args[0] = new NameValuePair("q", query.toString());
-	    String paramsString = EncodingUtil.formUrlEncode(args, "UTF8");
 
-	    Document doc = makeRequest(baseUrl, paramsString);
+	    Document doc = makeRequest(baseUrl, query.toString());
 	    results = readChoiceList(doc);
         
         return results.toArray(new Choice[results.size()]);
