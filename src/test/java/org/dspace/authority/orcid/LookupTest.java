@@ -91,7 +91,7 @@ public class LookupTest extends TestCase {
     /* don't run these by default since they rely on the service being up and running*/
     public void testDoQuery() {
 	    try {
-		    Choice[] choices = authorLookup.doQuery("http://pub.orcid.org/search/orcid-bio/", "Andrea", "Schweer");
+		Choice[] choices = authorLookup.doQuery("http://pub.orcid.org/search/orcid-bio/", "Andrea", "Schweer", 0, 10);
 		    assertTrue(choices.length > 0);
 	    } catch (LookupException e) {
 		    e.printStackTrace();

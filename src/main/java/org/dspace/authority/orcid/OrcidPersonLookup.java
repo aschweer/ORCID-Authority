@@ -60,30 +60,22 @@ public class OrcidPersonLookup implements ChoiceAuthority {
         
         Choice[] values;
         try {
-            values = doQuery("http://pub.orcid.org/search/orcid-bio/", name.getFirstNames(), name.getLastName());
+            values = doQuery("http://pub.orcid.org/search/orcid-bio/", name.getFirstNames(), name.getLastName(), start, limit);
         } catch (LookupException e) {
             log.error("Cannot look up matches for field=" + field + ", text=" + text, e);
             return new Choices(true);
         }
-        Choice[] offsetValues = values;
-        if (start > 0 || limit > 0) {
-            offsetValues = doOffset(values, start, limit);
-        }
-
-        if (offsetValues.length == 0) {
-            return new Choices(Choices.CF_NOTFOUND);
-        }
         
         int confidence;
         int defaultSelected = -1;
-        if (offsetValues.length > 1) {
+        if (values.length > 1 || limit == 1) {
             confidence = Choices.CF_AMBIGUOUS;
             defaultSelected = 0;
         } else {
             confidence = Choices.CF_UNCERTAIN;
         }
-        boolean hasMore = start + offsetValues.length < values.length;
-        return new Choices(offsetValues, start, values.length, confidence, hasMore, defaultSelected);
+        boolean hasMore = true; //to do find that out from orcid!
+        return new Choices(values, start, values.length, confidence, hasMore, defaultSelected);
     }
 
     Choice[] doOffset(Choice[] values, int start, int limit) {
@@ -99,34 +91,39 @@ public class OrcidPersonLookup implements ChoiceAuthority {
         return result.toArray(new Choice[result.size()]);
     }
 
-    Choice[] doQuery(String baseUrl, String firstName, String lastName) throws LookupException {
+    Choice[] doQuery(String baseUrl, String firstName, String lastName, int start, int limit) throws LookupException {
         List<Choice> results;
 
 	    NameValuePair[] args = new NameValuePair[1];
 
 	    StringBuilder query = new StringBuilder();
+	    query.append("q=");
 	    query.append("family-name:");
 	    query.append(lastName);
-	    query.append(" AND given-names:");
+	    query.append("+AND+given-names:");
 	    query.append(firstName);
-	    args[0] = new NameValuePair("q", query.toString());
-	    String paramsString = EncodingUtil.formUrlEncode(args, "UTF8");
+	    query.append("&start=");
+	    query.append(start);
+	    query.append("&rows=");
+	    query.append(limit);
 
-	    Document doc = makeRequest(baseUrl, paramsString);
+	    Document doc = makeRequest(baseUrl, query.toString());
 	    results = readChoiceList(doc);
         
         return results.toArray(new Choice[results.size()]);
     }
 
-	private Document makeRequest(String baseUrl, String paramsString) throws LookupException {
+    private Document makeRequest(String baseUrl, String paramsString) throws LookupException {
 		Document doc;
 		log.info("About to look up " + baseUrl + paramsString);
 		GetMethod method = new GetMethod(baseUrl);
 		method.setQueryString(paramsString);
+		method.setRequestHeader("Accept", "application/orcid+xml");
 
 		try {
 			HttpClient client = new HttpClient();
 			client.getHttpConnectionManager().getParams().setConnectionTimeout(10000); // 10 second timeout to allow for look-up
+			    
 		    client.executeMethod(method);
 		    InputStream responseStream = method.getResponseBodyAsStream();
 
@@ -191,7 +188,7 @@ public class OrcidPersonLookup implements ChoiceAuthority {
             throw new LookupException("Cannot read lookup service response");
         }
 
-        NodeList authors = doc.getElementsByTagName("author");
+        NodeList authors = doc.getElementsByTagName("orcid-profile");
         for (int i = 0; i < authors.getLength(); i++) {
             Node author = authors.item(i);
 
@@ -205,44 +202,26 @@ public class OrcidPersonLookup implements ChoiceAuthority {
     }
 
     Choice createChoiceFromAuthor(Node author) {
-        String id = null;
         String name = null;
-        String role = null;
-        String phone = null;
+	NodeList bio = author.getOwnerDocument().getElementsByTagName("orcid-bio");
+	NodeList details = bio.item(0).getOwnerDocument().getElementsByTagName("personal-details");
+	String familyName = details.item(0).getOwnerDocument().getElementsByTagName("family-name").item(0).getTextContent();
+	String givenName = details.item(0).getOwnerDocument().getElementsByTagName("given-names").item(0).getTextContent();
 
-        NodeList children = author.getChildNodes();
-        for (int j = 0; j < children.getLength(); j++) {
-            Node child = children.item(j);
-            if (child.getNodeType() == Node.ELEMENT_NODE) {
-                if (child.getNodeName().equals("id")) {
-                    id = child.getTextContent();
-                } else if (child.getNodeName().equals("name")) {
-                    name = child.getTextContent();
-                } else if (child.getNodeName().equals("role")) {
-                    role = child.getTextContent();
-                } else if (child.getNodeName().equals("phone")) {
-                    phone = child.getTextContent();
-                }
-            }
-        }
+	name = familyName + ", " + givenName;
 
+	String id = author.getOwnerDocument().getElementsByTagName("orcid").item(0).getTextContent();
+	
         Choice choice = null;
         if (id != null && name != null) {
             choice = new Choice();
 
-            choice.authority = id;
+            choice.authority = "orcid:" + id;
             choice.value = name;
 
             StringBuilder labelBuilder = new StringBuilder(name);
-            if (role != null) {
-                labelBuilder.append(" (");
-                labelBuilder.append(role);
-                labelBuilder.append(")");
-            }
-            if (phone != null) {
-                labelBuilder.append(" phone: ");
-                labelBuilder.append(phone);
-            }
+	    labelBuilder.append("ORCID iD: ");
+	    labelBuilder.append(id);
             choice.label = labelBuilder.toString();
         }
         return choice;
