@@ -188,7 +188,7 @@ public class OrcidPersonLookup implements ChoiceAuthority {
             throw new LookupException("Cannot read lookup service response");
         }
 
-        NodeList authors = doc.getElementsByTagName("author");
+        NodeList authors = doc.getElementsByTagName("orcid-profile");
         for (int i = 0; i < authors.getLength(); i++) {
             Node author = authors.item(i);
 
