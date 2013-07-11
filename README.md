@@ -18,5 +18,5 @@ functionality.
 Known limitations:
 - no tests / existing tests don't work
 - no reverse lookup (orcid id -> name)
-- not much help in disambiguating multiple hits
+- not much help in disambiguating multiple hits - should show more data from orcid-bio where present (eg name variants, country, affiliation)
 - not much flexibility around missing values / spaces or non-ASCII characters in name
