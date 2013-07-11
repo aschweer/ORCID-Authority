@@ -1,0 +1,55 @@
+diff --git a/dspace-xmlui/src/main/webapp/themes/Mirage/lib/xsl/aspect/artifactbrowser/item-view.xsl b/dspace-xmlui/src/main/webapp/themes/Mirage/lib/xsl/aspect/artifactbrowser/item-view.xsl
+index 36fe116..45ff1b7 100644
+--- a/dspace-xmlui/src/main/webapp/themes/Mirage/lib/xsl/aspect/artifactbrowser/item-view.xsl
++++ b/dspace-xmlui/src/main/webapp/themes/Mirage/lib/xsl/aspect/artifactbrowser/item-view.xsl
+@@ -150,6 +150,9 @@
+                                             <xsl:attribute name="class"><xsl:text>ds-dc_contributor_author-authority</xsl:text></xsl:attribute>
+                                           </xsl:if>
+ 	                                <xsl:copy-of select="node()"/>
++					<xsl:if test="@authority">
++					  <xsl:text> </xsl:text><small>(<xsl:value-of select="@authority"/>)</small>
++					</xsl:if>
+                                         </span>
+ 	                                <xsl:if test="count(following-sibling::dim:field[@element='contributor'][@qualifier='author']) != 0">
+ 	                                    <xsl:text>; </xsl:text>
+diff --git a/dspace/config/dspace.cfg b/dspace/config/dspace.cfg
+index 7af21fd..887917a 100644
+--- a/dspace/config/dspace.cfg
++++ b/dspace/config/dspace.cfg
+@@ -1309,7 +1309,8 @@ sitemap.engineurls = http://www.google.com/webmasters/sitemaps/ping?sitemap=
+ 
+ #####  Authority Control Settings  #####
+ 
+-#plugin.named.org.dspace.content.authority.ChoiceAuthority = \
++plugin.named.org.dspace.content.authority.ChoiceAuthority = \
++							  org.dspace.authority.orcid.OrcidPersonLookup = ORCIDAuthor
+ # org.dspace.content.authority.SampleAuthority = Sample, \
+ # org.dspace.content.authority.LCNameAuthority = LCNameAuthority, \
+ # org.dspace.content.authority.SHERPARoMEOPublisher = SRPublisher, \
+@@ -1365,6 +1366,10 @@ authority.minconfidence = ambiguous
+ ## keyword from the same set as for the default "authority.minconfidence"
+ #authority.minconfidence.dc.contributor.author = accepted
+ 
++choices.plugin.dc.contributor.author = ORCIDAuthor
++choices.presentation.dc.contributor.author = lookup
++authority.controlled.dc.contributor.author = true
++
+ ## demo: subject code autocomplete, using srsc as authority
+ ## (DSpaceControlledVocabulary plugin must be enabled)
+ ## Warning: when enabling this feature any controlled vocabulary configuration in the input-forms.xml for the metadata field will be overridden.
+diff --git a/dspace/modules/additions/pom.xml b/dspace/modules/additions/pom.xml
+index 3943a75..bd08f97 100644
+--- a/dspace/modules/additions/pom.xml
++++ b/dspace/modules/additions/pom.xml
+@@ -74,6 +74,11 @@
+    <dependencies>
+       <dependency>
+          <groupId>org.dspace</groupId>
++         <artifactId>orcid-authority</artifactId>
++         <version>1.0-SNAPSHOT</version>
++      </dependency>
++      <dependency>
++         <groupId>org.dspace</groupId>
+          <artifactId>dspace-api</artifactId>
+       </dependency>
+       <dependency>
