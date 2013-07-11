@@ -18,6 +18,7 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -203,15 +204,48 @@ public class OrcidPersonLookup implements ChoiceAuthority {
 
     Choice createChoiceFromAuthor(Node author) {
         String name = null;
-	NodeList bio = author.getOwnerDocument().getElementsByTagName("orcid-bio");
-	NodeList details = bio.item(0).getOwnerDocument().getElementsByTagName("personal-details");
-	String familyName = details.item(0).getOwnerDocument().getElementsByTagName("family-name").item(0).getTextContent();
-	String givenName = details.item(0).getOwnerDocument().getElementsByTagName("given-names").item(0).getTextContent();
+	String id = null;
 
-	name = familyName + ", " + givenName;
+	XPathFactory factory = XPathFactory.newInstance();
+	XPath orcidPath = factory.newXPath();
+	NodeList orcidCandidates = null;
+	try {
+	    orcidCandidates = (NodeList) orcidPath.evaluate("orcid", author, XPathConstants.NODESET);
+	} catch (XPathExpressionException e) {
+	    log.error("cannot find orcid", e);
+	}
+       	if (orcidCandidates != null && orcidCandidates.getLength() > 0) {
+	  id = orcidCandidates.item(0).getTextContent();
+	}
 
-	String id = author.getOwnerDocument().getElementsByTagName("orcid").item(0).getTextContent();
-	
+	String familyName = null;
+	XPath familyNamePath = factory.newXPath();
+	NodeList familyNameCandidates = null;
+	try {
+	    familyNameCandidates = (NodeList) familyNamePath.evaluate("orcid-bio/personal-details/family-name", author, XPathConstants.NODESET);
+	} catch (XPathExpressionException e) {
+	    log.error("cannot find family name", e);
+	}
+	if (familyNameCandidates != null && familyNameCandidates.getLength() > 0) {
+	    familyName = familyNameCandidates.item(0).getTextContent();
+	}
+
+	String givenNames = null;
+	XPath givenNamesPath = factory.newXPath();
+	NodeList givenNamesCandidates = null;
+	try {
+	    givenNamesCandidates = (NodeList) givenNamesPath.evaluate("orcid-bio/personal-details/given-names", author, XPathConstants.NODESET);
+	} catch (XPathExpressionException e) {
+	    log.error("cannot find given name(s)", e);
+	}
+	if (givenNamesCandidates != null && givenNamesCandidates.getLength() > 0) {
+	    givenNames = givenNamesCandidates.item(0).getTextContent();
+	}
+
+	if (familyName != null && givenNames != null) {
+	    name = familyName + ", " + givenNames;
+	}
+
         Choice choice = null;
         if (id != null && name != null) {
             choice = new Choice();
@@ -220,7 +254,7 @@ public class OrcidPersonLookup implements ChoiceAuthority {
             choice.value = name;
 
             StringBuilder labelBuilder = new StringBuilder(name);
-	    labelBuilder.append("ORCID iD: ");
+	    labelBuilder.append("; ORCID iD: ");
 	    labelBuilder.append(id);
             choice.label = labelBuilder.toString();
         }
